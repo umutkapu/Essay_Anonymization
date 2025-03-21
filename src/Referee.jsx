@@ -17,7 +17,7 @@ import Button from '@mui/material/Button';
 import PersonSearch from '@mui/icons-material/PersonSearch';
 
 const NAVIGATION = [
-    { kind: 'header', title: 'Hakem İşlemleri' },
+    { kind: 'header', title: 'Hakem İşlemleriiii' },
     { segment: 'referees', title: 'Hakemler', icon: <PersonSearch /> },
 ];
 
