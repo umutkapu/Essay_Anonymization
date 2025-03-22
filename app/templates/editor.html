@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    
+</head>
+<body>
+    
+    <h1>Editor Sayfasi</h1>
+    <ul>
+        {% for article in articles %}
+        <li>
+            <table>
+                <tr>
+                    <td>{{article.author_email}}</td>
+                    <td>{{article.file}}</td>
+                    <td>
+                        <a href="{% url 'articledetail' article.id %}">Detay</a>
+                    </td>
+                </tr>
+            </table>
+        </li>
+        {% endfor %}
+    </ul>
+
+
+
+</body>
+</html>
