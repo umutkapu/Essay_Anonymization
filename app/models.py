@@ -1,0 +1,66 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+import random , string
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+def generate_tracking_number():
+    while True:
+        # Takip numarasını rastgele oluştur
+        tracking_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+        
+        # Veritabanında bu takip numarasının daha önce var olup olmadığını kontrol et
+        if not Article.objects.filter(tracking_number=tracking_number).exists():
+            return tracking_number
+        
+
+class Reviewer(models.Model):
+    name = models.CharField(max_length=255)
+    alan = models.CharField(max_length=255 , null=True , blank=True)  
+    
+    def __str__(self):
+        return f"Review for {self.article.title} by {self.reviewer.username}"   
+
+class Article(models.Model):
+    file = models.FileField(upload_to='uploads/')
+    konu = models.CharField(max_length=255, blank=True, null=True)
+    upload_date = models.DateTimeField(auto_now_add=True)
+    author_email = models.EmailField()  # Yazar sisteme üye olmadan yükleme yapabilir
+    tracking_number = models.CharField(max_length=10 , default=generate_tracking_number)
+    hakem = models.ForeignKey(Reviewer, on_delete=models.SET_NULL, null=True)
+
+
+    def __str__(self): 
+        return self.title
+    
+@receiver(post_save, sender=Article)
+def create_log_on_article_upload(sender, instance, created, **kwargs):
+    if created:  # Eğer yeni bir makale oluşturuluyorsa
+        Log.objects.create(
+            article=instance,
+            action=f"Article '{instance.file}' uploaded", 
+            timestamp=instance.upload_date
+        )
+
+class Editor(models.Model):
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+
+class Message(models.Model):
+    sender = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="sent_messages")
+    receiver = models.ForeignKey(Editor, on_delete=models.CASCADE, related_name="received_messages")
+    article = models.ForeignKey(Article, on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Message from {self.sender.username} to {self.receiver.username}"
+
+class Log(models.Model):
+    article = models.ForeignKey(Article, on_delete=models.CASCADE)
+    action = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.article.title} - {self.action} at {self.timestamp}"
+
