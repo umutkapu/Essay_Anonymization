@@ -1,7 +1,9 @@
 from django.shortcuts import render , redirect
 from .models import *
 from .forms import PdfForm
-from .utils import pdf_metni_cikart, konu_modelleme ,anonim_metin_pdf_kaydet
+from .utils import *
+import os
+from django.conf import settings
 
 
 def uploadArticle(request):
@@ -23,22 +25,26 @@ def editor(request):
 
 
 def articledetails(request , id):
-    article = Article.objects.get(id=id)
+    article = Article.objects.get(id=id)  
     pdf_dosya = article.file.path
 
-    
-    # PDF metnini çıkar ve anonimleştir 
-    anonim_metin = pdf_metni_cikart(pdf_dosya)
-    
-    # Anonimleştirilmiş metni PDF olarak kaydet
     anonim_pdf_yolu = f"media/uploads/anonim_{article.id}.pdf"
-    anonim_metin_pdf_kaydet(anonim_metin, anonim_pdf_yolu)
+    save_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
+    file_path = os.path.join(save_dir,f"anonim_{article.id}.pdf" )
+    with open(file_path, 'w') as f:
+        f.write(pdf_dosya)
+    pdf_icerik_ve_resim_anonimlestir(pdf_dosya, anonim_pdf_yolu)
+
+    return render(request, "article_detail.html", {
+        "article": article,
+        "anonim_pdf_yolu": anonim_pdf_yolu     
+    }) 
     
-    # Konu modelleme işlemi
-    konu = konu_modelleme(anonim_metin)
-    Article.objects.filter(id=id).update(konu=konu)
     
-    return render(request, "article_detail.html", {"article": article, "anonim_pdf_yolu": anonim_pdf_yolu})
+
+
+
+
 
 
 

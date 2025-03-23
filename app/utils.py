@@ -7,55 +7,52 @@ import nltk
 from nltk.corpus import stopwords
 import string
 import re
+import cv2 , numpy as np
+from PIL import Image
+import io
 
 nlp = spacy.load("en_core_web_sm")
 
-def pdf_metni_cikart(pdf_dosya):
+def pdf_icerik_ve_resim_anonimlestir(pdf_dosya, cikti_dosya):
     try:
         # PDF dosyasını aç
         doc = fitz.open(pdf_dosya)
-        anonim_metinler = []
         
-        # Her sayfanın metnini çıkar ve anonimleştir
+        # Her sayfanın içeriğini düzenle
         for sayfa in doc:
-            metin = sayfa.get_text("text")
-            anonim_metin = anonimlestir(metin)
-            anonim_metinler.append(anonim_metin)
-        
-        # PDF dosyasını kapat
+            metin = sayfa.get_text("dict")  # Metni ve koordinatları al
+            yazar_adi_koordinatlari = []
+            
+            # Yazar isimlerini bul ve koordinatlarını al
+            for block in metin["blocks"]:
+                if "lines" in block:
+                    for line in block["lines"]:
+                        for span in line["spans"]:
+                            
+                            text = span["text"]
+                            doc_nlp = nlp(text)
+                            for ent in doc_nlp.ents:
+                                if ent.label_ == "PERSON":  # Yazar isimleri genellikle "PERSON" olarak etiketlenir
+                                    yazar_adi_koordinatlari.append(span["bbox"])  # Koordinatları kaydet
+            
+            # Yazar isimlerinin üzerine siyah şerit çek
+            for bbox in yazar_adi_koordinatlari:
+                sayfa.draw_rect(bbox, color=(0, 0, 0), fill=(0, 0, 0))  # Siyah şerit
+                
+            
+            # Resimlerin üzerine siyah şerit çek
+            # for img in sayfa.get_images(full=True):
+            #     xref = img[0]
+            #     bbox = sayfa.get_image_bbox(xref)
+            #     sayfa.draw_rect(bbox, color=(0, 0, 0), fill=(0, 0, 0))  # Siyah şerit
+                
+      
+        # Anonimleştirilmiş PDF'yi kaydet
+        doc.save(cikti_dosya)
         doc.close()
-        return anonim_metinler
+        print(f"Anonimleştirilmiş PDF {cikti_dosya} dosyasına kaydedildi.")
     except Exception as e:
-        print(f"PDF metni çıkarılamadı: {e}")
-        return []
-
-def anonimlestir(metin):
-    metin = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '******', metin)
-    
-    metin = re.sub(r'\b[A-Z][a-z]+\s[A-Z][a-z]+\b', '******', metin)
-    
-    metin = re.sub(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', '******', metin)
-    
-    return metin
-
-def anonim_metin_pdf_kaydet(metinler, dosya_adi):
-    # Yeni bir PDF belgesi oluştur
-    pdf = fitz.open()
-    
-    # Her sayfa için metni ekle
-    for metin in metinler:
-        # Yeni bir sayfa ekle
-        sayfa = pdf.new_page()
-        
-        # Metni sayfaya ekle
-        sayfa.insert_text((72, 72), metin)  # (72, 72) başlangıç koordinatlarıdır
-    
-    # PDF dosyasını kaydet
-    pdf.save(dosya_adi)
-    pdf.close()
-    print(f"Anonimleştirilmiş metin {dosya_adi} dosyasına kaydedildi.")
-
-nltk.download('stopwords')
+        print(f"PDF içeriği ve resimleri anonimleştirme sırasında hata oluştu: {e}")
 
 
 def konu_modelleme(metin):

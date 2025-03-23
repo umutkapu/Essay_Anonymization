@@ -31,7 +31,7 @@ class Article(models.Model):
 
 
     def __str__(self): 
-        return self.title
+        return self.file.name
     
 @receiver(post_save, sender=Article)
 def create_log_on_article_upload(sender, instance, created, **kwargs):
