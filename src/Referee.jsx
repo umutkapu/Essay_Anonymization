@@ -15,6 +15,7 @@ import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import PersonSearch from '@mui/icons-material/PersonSearch';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const NAVIGATION = [
     { kind: 'header', title: 'Hakem İşlemleri' },
@@ -42,25 +43,68 @@ export default function RefereePanel(props) {
     const demoWindow = window ? window() : undefined;
 
     const [selectedReviewer, setSelectedReviewer] = React.useState(null);
+    const [reviewers, setReviewers] = React.useState([]);
+    const [assignedEssays, setAssignedEssays] = React.useState([]);
     const [essayComments, setEssayComments] = React.useState({});
+    const [essayResults, setEssayResults] = React.useState({});
 
-    // Örnek hakem ve makale verisi
-    const reviewers = [
-        { id: 'r1', name: "Prof. Dr. Ayşe Kaya" },
-        { id: 'r2', name: "Doç. Dr. Ahmet Yıldız" },
-        { id: 'r3', name: "Dr. Can Demir" },
-    ];
+    React.useEffect(() => {
+        if (router.pathname.endsWith('/referees')) {
+            fetch('http://localhost:8000/get-reviewer-list/')
+                .then(res => res.json())
+                .then(data => setReviewers(data));
 
-    const assignedEssays = [
-        { id: 1, title: "Makale 1", reviewerId: 'r1' },
-        { id: 2, title: "Makale 2", reviewerId: 'r2' },
-        { id: 3, title: "Makale 3", reviewerId: 'r1' },
-        { id: 4, title: "Makale 4", reviewerId: 'r3' },
-    ];
+            fetch('http://localhost:8000/get-assigned-essays/')
+                .then(res => res.json())
+                .then(data => {
+                    console.log("Yönlendirilmiş makaleler:", data);
+                    setAssignedEssays(data);
+                });
+        }
+    }, [router.pathname]);
 
     const selectedReviewerEssays = assignedEssays.filter(
         (essay) => essay.reviewerId === selectedReviewer?.id
     );
+
+    const handleSave = (essayId) => {
+        const comment = essayComments[essayId];
+        const result = essayResults[essayId];
+
+        if (!comment || !result) {
+            alert("Lütfen hem yorum hem de sonucu giriniz.");
+            return;
+        }
+
+        fetch('http://localhost:8000/save-review/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                article_id: essayId,
+                reviewer_id: selectedReviewer.id,
+                comment,
+                result,
+            }),
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Değerlendirme başarıyla kaydedildi.");
+
+                    // 🔄 Listeyi yeniden al
+                    fetch('http://localhost:8000/get-assigned-essays/')
+                        .then(res => res.json())
+                        .then(data => setAssignedEssays(data))
+                        .catch(err => console.error("Makale güncelleme hatası:", err));
+                } else {
+                    alert("Hata: " + data.message);
+                }
+            })
+            .catch(() => alert("Sunucuya ulaşılamadı."));
+    };
+
 
     return (
         <AppProvider
@@ -70,13 +114,7 @@ export default function RefereePanel(props) {
             window={demoWindow}
             branding={{
                 title: 'Hakem',
-                logo: (
-                    <img
-                        src="/referee.png"
-                        alt="Hakem Sayfası"
-                        onClick={() => router.navigate('/referee')}
-                    />
-                ),
+                logo: <img src="/referee.png" alt="Hakem Sayfası" onClick={() => router.navigate('/referee')} />,
             }}
         >
             <DashboardLayout>
@@ -108,15 +146,33 @@ export default function RefereePanel(props) {
                                             {selectedReviewerEssays.length > 0 ? (
                                                 selectedReviewerEssays.map((essay) => (
                                                     <Paper key={essay.id} sx={{ p: 2, mb: 2 }}>
-                                                        <Typography variant="body1"><b>{essay.title}</b></Typography>
+                                                        <Grid container spacing={1}>
+                                                            <Grid item xs={10}>
+                                                                <Typography variant="body1"><b>{essay.title}</b></Typography>
+                                                            </Grid>
+                                                            <Grid item xs={2} textAlign="right">
+                                                                {/* 📎 PDF İndirme Butonu */}
+                                                                <a
+                                                                    href={`http://localhost:8000${essay.anon_pdf}`}
+                                                                    download
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                >
+                                                                    <Button variant="outlined" color="secondary" sx={{ mt: 1 }} startIcon={<DownloadIcon />}>
 
-                                                        {/* Yorum girişi */}
+                                                                    </Button>
+                                                                </a>
+
+
+                                                            </Grid>
+                                                        </Grid>
+
                                                         <TextField
                                                             label="Yorumunuz"
                                                             variant="outlined"
                                                             fullWidth
                                                             multiline
-                                                            rows={3}
+                                                            rows={2}
                                                             value={essayComments[essay.id] || ""}
                                                             onChange={(e) =>
                                                                 setEssayComments((prev) => ({
@@ -127,18 +183,30 @@ export default function RefereePanel(props) {
                                                             sx={{ mt: 1 }}
                                                         />
 
-                                                        {/* Kaydet butonu */}
+                                                        <TextField
+                                                            label="Sonuç"
+                                                            variant="outlined"
+                                                            fullWidth
+                                                            value={essayResults[essay.id] || ""}
+                                                            onChange={(e) =>
+                                                                setEssayResults((prev) => ({
+                                                                    ...prev,
+                                                                    [essay.id]: e.target.value,
+                                                                }))
+                                                            }
+                                                            sx={{ mt: 1 }}
+                                                        />
+
                                                         <Button
                                                             variant="contained"
                                                             color="primary"
                                                             sx={{ mt: 1 }}
-                                                            onClick={() =>
-                                                                alert(`Yorum kaydedildi:\n${essayComments[essay.id] || "(boş)"}`)
-                                                            }
+                                                            onClick={() => handleSave(essay.id)}
                                                         >
-                                                            Yorumu Kaydet
+                                                            Değerlendirmeyi Kaydet
                                                         </Button>
                                                     </Paper>
+
                                                 ))
                                             ) : (
                                                 <Typography variant="body2">

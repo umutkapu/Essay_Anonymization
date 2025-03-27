@@ -6,54 +6,47 @@ import { PageContainer } from '@toolpad/core/PageContainer';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import { colors, Divider } from '@mui/material';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'; // Makale Yükleme için
-import SendIcon from '@mui/icons-material/Send'; // Mesaj Gönderme için
+import { Divider } from '@mui/material';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import SendIcon from '@mui/icons-material/Send';
 
+// Yardımcı fonksiyon: CSRF token'ı cookie'den al
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === `${name}=`) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 
 const NAVIGATION = [
-    {
-        kind: 'header',
-        title: 'Makale İşlemleri',
-    },
-    {
-        segment: 'messages',
-        title: 'Mesaj Gönderme',
-        icon: <SendIcon />,
-    },
-    {
-        segment: 'essay_upload',
-        title: 'Makale Yükleme',
-        icon: <CloudUploadIcon />,
-    },
+    { kind: 'header', title: 'Makale İşlemleri' },
+    { segment: 'messages', title: 'Mesaj Gönderme', icon: <SendIcon /> },
+    { segment: 'essay_upload', title: 'Makale Yükleme', icon: <CloudUploadIcon /> },
 ];
 
 const demoTheme = extendTheme({
     colorSchemes: { light: true, dark: true },
     colorSchemeSelector: 'class',
     breakpoints: {
-        values: {
-            xs: 0,
-            sm: 600,
-            md: 600,
-            lg: 1200,
-            xl: 1536,
-        },
+        values: { xs: 0, sm: 600, md: 600, lg: 1200, xl: 1536 },
     },
 });
 
 function useDemoRouter(initialPath) {
     const [pathname, setPathname] = React.useState(initialPath);
-
-    const router = React.useMemo(() => {
-        return {
-            pathname,
-            searchParams: new URLSearchParams(),
-            navigate: (path) => setPathname(String(path)),
-        };
-    }, [pathname]);
-
-    return router;
+    return React.useMemo(() => ({
+        pathname,
+        searchParams: new URLSearchParams(),
+        navigate: (path) => setPathname(String(path)),
+    }), [pathname]);
 }
 
 export default function EssayUpload(props) {
@@ -61,28 +54,18 @@ export default function EssayUpload(props) {
     const router = useDemoRouter('/makalesistemi');
     const demoWindow = window ? window() : undefined;
 
+    const [message, setMessage] = React.useState('');
     const [email, setEmail] = React.useState('');
     const [emailError, setEmailError] = React.useState(false);
     const [emailHelperText, setEmailHelperText] = React.useState('');
+    const [selectedFile, setSelectedFile] = React.useState(null);
 
-    const handleFileUpload = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            // Burada dosya yükleme işlemini gerçekleştirebilirsiniz.
-            console.log('Selected file:', file);
-        }
-    };
-
-    const validateEmail = (email) => {
-        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basit bir e-posta regex'i
-        return regex.test(email);
-    };
+    const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
     const handleEmailChange = (event) => {
         const value = event.target.value;
         setEmail(value);
-
-        if (value === '') {
+        if (!value) {
             setEmailError(false);
             setEmailHelperText('');
         } else if (!validateEmail(value)) {
@@ -93,6 +76,93 @@ export default function EssayUpload(props) {
             setEmailHelperText('');
         }
     };
+
+    const handleFileUpload = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            setSelectedFile(file);
+            console.log('Dosya seçildi:', file);
+        }
+    };
+
+    const handleUpload = async () => {
+        if (!email || emailError) {
+            alert('Lütfen geçerli bir e-posta adresi girin.');
+            return;
+        }
+
+        if (!selectedFile) {
+            alert('Lütfen bir makale dosyası seçin.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('author_email', email);
+        formData.append('file', selectedFile);
+
+        const csrfToken = getCookie('csrftoken'); // backend csrf kontrolü varsa
+
+        try {
+            const response = await fetch('http://localhost:8000/makale_sistemi/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken, // backend'de csrf kontrolü varsa
+                },
+                credentials: 'include', // cookie'yi gönder
+                body: formData,
+            });
+
+            const text = await response.text();
+            console.log('Sunucudan gelen cevap:', text);
+
+            if (response.ok) {
+                alert('Makale başarıyla yüklendi!');
+                setEmail('');
+                setSelectedFile(null);
+            } else {
+                alert('Yükleme başarısız. Lütfen tekrar deneyin.');
+            }
+        } catch (error) {
+            console.error('Yükleme hatası:', error);
+            alert('Sunucuya bağlanılamadı.');
+        }
+    };
+
+    const handleSendMessage = async () => {
+        if (!email || emailError) {
+            alert('Geçerli bir e-posta adresi girin.');
+            return;
+        }
+
+        if (!message.trim()) {
+            alert('Lütfen mesaj yazın.');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:8000/send_message/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: email, message: message }),
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert('Mesaj başarıyla gönderildi!');
+                setEmail('');
+                setMessage('');
+            } else {
+                alert('Gönderim hatası: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Gönderim hatası:', error);
+            alert('Sunucuya ulaşılamadı.');
+        }
+    };
+
+
 
     return (
         <AppProvider
@@ -119,11 +189,10 @@ export default function EssayUpload(props) {
                                     onChange={handleEmailChange}
                                     error={emailError}
                                     helperText={emailHelperText}
-                                    InputLabelProps={{
-                                        shrink: true,
-                                    }}
+                                    InputLabelProps={{ shrink: true }}
                                 />
                             </Grid>
+
                             <Grid item xs={12}>
                                 <TextField
                                     type="file"
@@ -131,23 +200,16 @@ export default function EssayUpload(props) {
                                     variant="outlined"
                                     label="Makale dosyası"
                                     onChange={handleFileUpload}
-                                    InputLabelProps={{
-                                        shrink: true,
-                                    }}
+                                    InputLabelProps={{ shrink: true }}
                                 />
                             </Grid>
+
                             <Grid item xs={12}>
                                 <Button
                                     variant="contained"
                                     color="primary"
                                     startIcon={<CloudUploadIcon />}
-                                    onClick={() => {
-                                        if (email && !emailError) {
-                                            alert('Makale yüklendi!');
-                                        } else {
-                                            alert('Lütfen geçerli bir e-posta adresi girin.');
-                                        }
-                                    }}
+                                    onClick={handleUpload}
                                 >
                                     Makale Yükle
                                 </Button>
@@ -166,38 +228,31 @@ export default function EssayUpload(props) {
                                     onChange={handleEmailChange}
                                     error={emailError}
                                     helperText={emailHelperText}
-                                    InputLabelProps={{
-                                        shrink: true,
-                                    }}
+                                    InputLabelProps={{ shrink: true }}
                                 />
                             </Grid>
+
                             <Grid item xs={12}>
                                 <TextField
-                                    type="file"
                                     fullWidth
                                     variant="outlined"
                                     label="Mesaj"
-                                    onChange={handleFileUpload}
-                                    InputLabelProps={{
-                                        shrink: true,
-                                    }}
-                                    multiline // Çok satırlı metin girişi için
+                                    multiline
                                     rows={4}
+                                    value={message}  // 🔁 eksikti
+                                    onChange={(e) => setMessage(e.target.value)}  // 🔁 eksikti
                                     placeholder="Mesajınızı buraya yazın..."
+                                    InputLabelProps={{ shrink: true }}
                                 />
+
                             </Grid>
+
                             <Grid item xs={12}>
                                 <Button
                                     variant="contained"
                                     color="primary"
                                     startIcon={<SendIcon />}
-                                    onClick={() => {
-                                        if (email && !emailError) {
-                                            alert('Mesaj gönderildi!');
-                                        } else {
-                                            alert('Lütfen geçerli bir e-posta adresi girin.');
-                                        }
-                                    }}
+                                    onClick={handleSendMessage}
                                 >
                                     Mesaj Gönder
                                 </Button>
