@@ -1,61 +1,70 @@
 import fitz  
 import spacy
-from collections import Counter
 from gensim.corpora.dictionary import Dictionary
 from gensim.models.ldamodel import LdaModel
-import nltk
 from nltk.corpus import stopwords
 import string
 import re
+from PIL import Image
+
+
 
 nlp = spacy.load("en_core_web_sm")
 
-def pdf_metni_cikart(pdf_dosya):
+def pdf_icerik_ve_resim_anonimlestir(pdf_dosya, cikti_dosya):
+    
     try:
         # PDF dosyasını aç
         doc = fitz.open(pdf_dosya)
-        anonim_metinler = []
         
-        # Her sayfanın metnini çıkar ve anonimleştir
+        # Her sayfanın içeriğini düzenle
         for sayfa in doc:
-            metin = sayfa.get_text("text")
-            anonim_metin = anonimlestir(metin)
-            anonim_metinler.append(anonim_metin)
+            # Sayfa metnini ve koordinatlarını al
+            metin_dict = sayfa.get_text("dict")
+            metin = sayfa.get_text("text")  
+            konu = konu_modelleme(metin)
+
+            # "REFERENCES" bölümünü tespit et
+            if "REFERENCES" in metin.upper():
+                print("REFERENCES bölümü bulundu, bu sayfa anonimleştirme işleminden hariç tutulacak.")
+                continue  # Bu sayfayı atla
+            
+            # Her bloğu kontrol et
+            for block in metin_dict["blocks"]:
+                if "lines" in block:
+                    for line in block["lines"]:
+                        for span in line["spans"]:
+                            text = span["text"]  # Metni al
+                            bbox = span["bbox"]  # Metnin koordinatlarını al
+                            
+                            # Yazar isimlerini tespit etmek için regex
+                            yazar_pattern = r"\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\b" 
+                            bulunan_yazarlar = re.findall(yazar_pattern, text)
+                            
+                            # Yazar isimlerini "Anonim" ile değiştir
+                            for yazar in bulunan_yazarlar:
+                                text = text.replace(yazar, "ANONIM")
+                            
+                            # Metnin bulunduğu alanı beyaz bir dikdörtgenle kapat
+                            sayfa.draw_rect(bbox, color=(1, 1, 1), fill=(1, 1, 1))  # Beyaz dikdörtgen
+                            
+                            # Güncellenmiş metni aynı koordinatlara yaz
+                            sayfa.insert_text((bbox[0], bbox[1]), text, fontsize=span["size"], color=(0, 0, 0))
+            
+            for img in sayfa.get_images(full=True):
+                    name = img
+                    bbox = sayfa.get_image_bbox(name = name)
+                    if bbox:  
+                        sayfa.draw_rect(bbox, color=(0, 0, 0), fill=(0, 0, 0))  # Siyah şerit
+                
         
-        # PDF dosyasını kapat
+        # Anonimleştirilmiş PDF'yi kaydet
+        doc.save(cikti_dosya)
         doc.close()
-        return anonim_metinler
+        print(f"Anonimleştirilmiş PDF {cikti_dosya} olarak kaydedildi.")
+        return konu
     except Exception as e:
-        print(f"PDF metni çıkarılamadı: {e}")
-        return []
-
-def anonimlestir(metin):
-    metin = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '******', metin)
-    
-    metin = re.sub(r'\b[A-Z][a-z]+\s[A-Z][a-z]+\b', '******', metin)
-    
-    metin = re.sub(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', '******', metin)
-    
-    return metin
-
-def anonim_metin_pdf_kaydet(metinler, dosya_adi):
-    # Yeni bir PDF belgesi oluştur
-    pdf = fitz.open()
-    
-    # Her sayfa için metni ekle
-    for metin in metinler:
-        # Yeni bir sayfa ekle
-        sayfa = pdf.new_page()
-        
-        # Metni sayfaya ekle
-        sayfa.insert_text((72, 72), metin)  # (72, 72) başlangıç koordinatlarıdır
-    
-    # PDF dosyasını kaydet
-    pdf.save(dosya_adi)
-    pdf.close()
-    print(f"Anonimleştirilmiş metin {dosya_adi} dosyasına kaydedildi.")
-
-nltk.download('stopwords')
+        print(f"PDF yazar anonimleştirme sırasında hata oluştu: {e}") 
 
 
 def konu_modelleme(metin):
@@ -84,9 +93,3 @@ def konu_modelleme(metin):
         temiz_konular.append(", ".join(kelimeler))
     
     return temiz_konular[0]
-
-
-
-
-
-

@@ -28,6 +28,8 @@ class Article(models.Model):
     author_email = models.EmailField()  # Yazar sisteme üye olmadan yükleme yapabilir
     tracking_number = models.CharField(max_length=10 , default=generate_tracking_number)
     hakem = models.ForeignKey(Reviewer, on_delete=models.SET_NULL, null=True)
+    status = models.CharField(max_length=50, default="Anonimleştirilmemiş")  # örneğin
+
 
 
     def __str__(self): 
@@ -46,15 +48,15 @@ class Editor(models.Model):
     name = models.CharField(max_length=255)
     email = models.EmailField()
 
+# models.py
 class Message(models.Model):
-    sender = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="sent_messages")
-    receiver = models.ForeignKey(Editor, on_delete=models.CASCADE, related_name="received_messages")
-    article = models.ForeignKey(Article, on_delete=models.CASCADE)
+    sender_email = models.EmailField()
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
+
     def __str__(self):
-        return f"Message from {self.sender.username} to {self.receiver.username}"
+        return f"{self.sender_email} - {self.timestamp}"
 
 class Log(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE)
@@ -63,4 +65,15 @@ class Log(models.Model):
 
     def __str__(self):
         return f"{self.article.title} - {self.action} at {self.timestamp}"
+    
+    
+class Review(models.Model):
+    article = models.ForeignKey(Article, on_delete=models.CASCADE)
+    reviewer = models.ForeignKey(Reviewer, on_delete=models.CASCADE)
+    comment = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    result = models.TextField()
+    anon_pdf = models.FileField(upload_to='uploads/')
 
+    def __str__(self):
+        return f"Review for {self.article.title} by {self.reviewer.username}"
