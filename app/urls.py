@@ -12,5 +12,11 @@ urlpatterns = [
     path('get-messages/', views.get_messages, name='get_messages'),
     path('get-articles/', views.get_articles, name='get_articles'),
     path('sorgula/', views.get_article_by_tracking, name='get_article_by_tracking'),
-    path("anonimlestir/<int:id>/", views.anonimlestir_article, name="anonimlestir_article")
+    path("anonimlestir/<int:id>/", views.anonimlestir_article, name="anonimlestir_article"),
+    path("get-reviewers/<int:article_id>/", views.get_reviewers_by_topic),
+    path('assign-reviewer/', views.assign_reviewer),
+    path('save-review/', views.save_review),
+    path("get-reviewer-list/", views.get_reviewer_list, name="get-reviewer-list"),
+    path("get-assigned-essays/", views.get_assigned_essays, name="get-assigned-essays"),
+    path('get-review-for-article/<int:article_id>/', views.get_review_for_article, name='get_review_for_article'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

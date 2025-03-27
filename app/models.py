@@ -21,14 +21,17 @@ class Reviewer(models.Model):
     def __str__(self):
         return f"Review for {self.article.title} by {self.reviewer.username}"   
 
+# models.py
 class Article(models.Model):
     file = models.FileField(upload_to='uploads/')
-    konu = models.CharField(max_length=255, blank=True, null=True)
+    author_email = models.EmailField()
     upload_date = models.DateTimeField(auto_now_add=True)
-    author_email = models.EmailField()  # Yazar sisteme üye olmadan yükleme yapabilir
-    tracking_number = models.CharField(max_length=10 , default=generate_tracking_number)
-    hakem = models.ForeignKey(Reviewer, on_delete=models.SET_NULL, null=True)
-    status = models.CharField(max_length=50, default="Anonimleştirilmemiş")  # örneğin
+    status = models.CharField(max_length=255, default="Anonimleştirilmemiş")
+    konu = models.TextField(blank=True, null=True)
+    hakem = models.ForeignKey("Reviewer", on_delete=models.SET_NULL, null=True, blank=True)
+    tracking_number = models.CharField(max_length=100, unique=True)
+    anon_pdf = models.FileField(upload_to='uploads/', null=True, blank=True)  # 🟢 Burada tutulacak
+
 
 
 
