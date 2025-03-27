@@ -1,58 +1,70 @@
 import fitz  
 import spacy
-from collections import Counter
 from gensim.corpora.dictionary import Dictionary
 from gensim.models.ldamodel import LdaModel
-import nltk
 from nltk.corpus import stopwords
 import string
 import re
-import cv2 , numpy as np
 from PIL import Image
-import io
+
+
 
 nlp = spacy.load("en_core_web_sm")
 
 def pdf_icerik_ve_resim_anonimlestir(pdf_dosya, cikti_dosya):
+    
     try:
         # PDF dosyasını aç
         doc = fitz.open(pdf_dosya)
         
         # Her sayfanın içeriğini düzenle
         for sayfa in doc:
-            metin = sayfa.get_text("dict")  # Metni ve koordinatları al
-            yazar_adi_koordinatlari = []
+            # Sayfa metnini ve koordinatlarını al
+            metin_dict = sayfa.get_text("dict")
+            metin = sayfa.get_text("text")  
+            konu = konu_modelleme(metin)
+
+            # "REFERENCES" bölümünü tespit et
+            if "REFERENCES" in metin.upper():
+                print("REFERENCES bölümü bulundu, bu sayfa anonimleştirme işleminden hariç tutulacak.")
+                continue  # Bu sayfayı atla
             
-            # Yazar isimlerini bul ve koordinatlarını al
-            for block in metin["blocks"]:
+            # Her bloğu kontrol et
+            for block in metin_dict["blocks"]:
                 if "lines" in block:
                     for line in block["lines"]:
                         for span in line["spans"]:
+                            text = span["text"]  # Metni al
+                            bbox = span["bbox"]  # Metnin koordinatlarını al
                             
-                            text = span["text"]
-                            doc_nlp = nlp(text)
-                            for ent in doc_nlp.ents:
-                                if ent.label_ == "PERSON":  # Yazar isimleri genellikle "PERSON" olarak etiketlenir
-                                    yazar_adi_koordinatlari.append(span["bbox"])  # Koordinatları kaydet
+                            # Yazar isimlerini tespit etmek için regex
+                            yazar_pattern = r"\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\b" 
+                            bulunan_yazarlar = re.findall(yazar_pattern, text)
+                            
+                            # Yazar isimlerini "Anonim" ile değiştir
+                            for yazar in bulunan_yazarlar:
+                                text = text.replace(yazar, "ANONIM")
+                            
+                            # Metnin bulunduğu alanı beyaz bir dikdörtgenle kapat
+                            sayfa.draw_rect(bbox, color=(1, 1, 1), fill=(1, 1, 1))  # Beyaz dikdörtgen
+                            
+                            # Güncellenmiş metni aynı koordinatlara yaz
+                            sayfa.insert_text((bbox[0], bbox[1]), text, fontsize=span["size"], color=(0, 0, 0))
             
-            # Yazar isimlerinin üzerine siyah şerit çek
-            for bbox in yazar_adi_koordinatlari:
-                sayfa.draw_rect(bbox, color=(0, 0, 0), fill=(0, 0, 0))  # Siyah şerit
+            for img in sayfa.get_images(full=True):
+                    name = img
+                    bbox = sayfa.get_image_bbox(name = name)
+                    if bbox:  
+                        sayfa.draw_rect(bbox, color=(0, 0, 0), fill=(0, 0, 0))  # Siyah şerit
                 
-            
-            # Resimlerin üzerine siyah şerit çek
-            # for img in sayfa.get_images(full=True):
-            #     xref = img[0]
-            #     bbox = sayfa.get_image_bbox(xref)
-            #     sayfa.draw_rect(bbox, color=(0, 0, 0), fill=(0, 0, 0))  # Siyah şerit
-                
-      
+        
         # Anonimleştirilmiş PDF'yi kaydet
         doc.save(cikti_dosya)
         doc.close()
-        print(f"Anonimleştirilmiş PDF {cikti_dosya} dosyasına kaydedildi.")
+        print(f"Anonimleştirilmiş PDF {cikti_dosya} olarak kaydedildi.")
+        return konu
     except Exception as e:
-        print(f"PDF içeriği ve resimleri anonimleştirme sırasında hata oluştu: {e}")
+        print(f"PDF yazar anonimleştirme sırasında hata oluştu: {e}") 
 
 
 def konu_modelleme(metin):

@@ -8,4 +8,6 @@ urlpatterns = [
     path('makale_sistemi/' , views.uploadArticle),
     path('editor/' , views.editor),
     path('editor/<int:id>' , views.articledetails , name = "articledetail"),
+    path('reviewer/' , views.reviewer),
+    path('reviewer/<int:id>' , views.reviewerdetail , name = "reviewerdetail"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -63,4 +63,16 @@ class Log(models.Model):
 
     def __str__(self):
         return f"{self.article.title} - {self.action} at {self.timestamp}"
+    
+
+class Review(models.Model):
+    article = models.ForeignKey(Article, on_delete=models.CASCADE)
+    reviewer = models.ForeignKey(Reviewer, on_delete=models.CASCADE)
+    comment = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    result = models.TextField()
+    anon_pdf = models.FileField(upload_to='uploads/')
+
+    def __str__(self):
+        return f"Review for {self.article.title} by {self.reviewer.username}"
 
