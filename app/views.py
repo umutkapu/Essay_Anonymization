@@ -1,7 +1,7 @@
 from django.shortcuts import render , redirect
 from .models import *
 from .forms import PdfForm
-from .utils import pdf_icerik_ve_resim_anonimlestir, konu_modelleme 
+from .utils import pdf_icerik_anonimlestir, konu_modelleme 
 import os
 from django.conf import settings
 
@@ -40,7 +40,7 @@ def articledetails(request , id):
     with open(pdf_dosya, 'rb') as source, open(file_path, 'wb') as dest:
         dest.write(source.read())
 
-    konu = pdf_icerik_ve_resim_anonimlestir(pdf_dosya, anonim_pdf_yolu)
+    konu = pdf_icerik_anonimlestir(pdf_dosya, anonim_pdf_yolu)
 
     article.konu = konu
 
@@ -60,7 +60,7 @@ def articledetails(request , id):
             review.save()
             article.save()
             
-            return redirect("/editor/")  # 🟢 BAŞARILI OLUNCA /editor SAYFASINA GİT
+            return redirect("/editor/")  
             
         except (ValueError, Reviewer.DoesNotExist):
             return render(request, "article_detail.html", {
@@ -82,7 +82,7 @@ def reviewer(request):
 
 
 def reviewerdetail(request, id):
-    review = Review.objects.get(id=id)
-    return render(request, "reviewer_detail.html", {"review": review})
+    reviews = Review.objects.filter(id=id)
+    return render(request, "reviewer_detail.html", {"reviews": reviews}) 
 
 

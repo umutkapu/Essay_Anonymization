@@ -5,29 +5,35 @@ from gensim.models.ldamodel import LdaModel
 from nltk.corpus import stopwords
 import string
 import re
-from PIL import Image
+from PIL import Image, ImageFilter
+import io
 
 
-
-nlp = spacy.load("en_core_web_sm")
-
-def pdf_icerik_ve_resim_anonimlestir(pdf_dosya, cikti_dosya):
+def pdf_icerik_anonimlestir(pdf_dosya, cikti_dosya):
     
     try:
-        # PDF dosyasını aç
         doc = fitz.open(pdf_dosya)
+    
+        # İngilizce dil modeli yükle (uyumlu sürüm)
+        nlp = spacy.load("en_core_web_lg")  # model adında alt çizgi kullanın
         
-        # Her sayfanın içeriğini düzenle
+        # E-posta regex deseni
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        
         for sayfa in doc:
-            # Sayfa metnini ve koordinatlarını al
             metin_dict = sayfa.get_text("dict")
             metin = sayfa.get_text("text")  
-            konu = konu_modelleme(metin)
-
-            # "REFERENCES" bölümünü tespit et
+            
+            # REFERENCES bölümü varsa atla
             if "REFERENCES" in metin.upper():
-                print("REFERENCES bölümü bulundu, bu sayfa anonimleştirme işleminden hariç tutulacak.")
-                continue  # Bu sayfayı atla
+                print("REFERENCES section found, skipping.")
+                continue 
+            
+            
+            nlp_doc = nlp(metin)
+            yazar_isimleri = [ent.text for ent in nlp_doc.ents if ent.label_ == "PERSON"]
+            
+            bulunan_email = re.findall(email_pattern, metin)
             
             # Her bloğu kontrol et
             for block in metin_dict["blocks"]:
@@ -35,36 +41,55 @@ def pdf_icerik_ve_resim_anonimlestir(pdf_dosya, cikti_dosya):
                     for line in block["lines"]:
                         for span in line["spans"]:
                             text = span["text"]  # Metni al
-                            bbox = span["bbox"]  # Metnin koordinatlarını al
+                            bbox = span["bbox"]  # Koordinatları al
+
+                            # Yazarlar ve e-postaları anonimleştir
+                            for yazar in yazar_isimleri:
+                                text = text.replace(yazar, "ANONYMIZED")
                             
-                            # Yazar isimlerini tespit etmek için regex
-                            yazar_pattern = r"\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\b" 
-                            bulunan_yazarlar = re.findall(yazar_pattern, text)
+                            for email in bulunan_email:
+                                text = text.replace(email, "anonymous@example.com")
                             
-                            # Yazar isimlerini "Anonim" ile değiştir
-                            for yazar in bulunan_yazarlar:
-                                text = text.replace(yazar, "ANONIM")
-                            
-                            # Metnin bulunduğu alanı beyaz bir dikdörtgenle kapat
-                            sayfa.draw_rect(bbox, color=(1, 1, 1), fill=(1, 1, 1))  # Beyaz dikdörtgen
-                            
-                            # Güncellenmiş metni aynı koordinatlara yaz
-                            sayfa.insert_text((bbox[0], bbox[1]), text, fontsize=span["size"], color=(0, 0, 0))
+                            if any(yazar in span["text"] for yazar in yazar_isimleri) or any(email in span["text"] for email in bulunan_email):
+                                sayfa.draw_rect(bbox, color=(1, 1, 1), fill=(1, 1, 1))  # Beyaz dikdörtgen
+                                sayfa.insert_text((bbox[0], bbox[1]), text, fontsize=span["size"], color=(0, 0, 0))
+
+            # Resimleri kontrol et ve yalnızca yazarla ilişkili resimleri bulanıklaştır
+            # images = sayfa.get_images(full=True)  # Sayfadaki tüm resimleri al
             
-            for img in sayfa.get_images(full=True):
-                    name = img
-                    bbox = sayfa.get_image_bbox(name = name)
-                    if bbox:  
-                        sayfa.draw_rect(bbox, color=(0, 0, 0), fill=(0, 0, 0))  # Siyah şerit
-                
-        
+            # # Eğer sayfada resimler varsa, bunları işleyelim
+            # if images:
+            #     for img_data in images:
+            #         xref = img_data[0]  # Xref numarasını al
+                    
+            #         # Resim verilerini çıkart
+            #         metadata = doc.extract_image(xref)
+            #         img_bytes = metadata["image"]  # Resmin byte verisini al
+                    
+            #         # Resmi Pillow ile aç
+            #         img = Image.open(io.BytesIO(img_bytes))
+                    
+            #         # Resmi bulanıklaştır
+            #         blurred_img = img.filter(ImageFilter.GaussianBlur(5))  # Burada 5, bulanıklık seviyesini belirler
+                    
+            #         # Bulanık resmi tekrar byte veri olarak kaydet
+            #         img_byte_arr = io.BytesIO()
+            #         blurred_img.save(img_byte_arr, format="PNG")
+            #         img_byte_arr.seek(0)
+                    
+            #         # Bulanık resmi PDF'ye yerleştir
+            #         sayfa.insert_image(sayfa.rect, stream=img_byte_arr.read())
+                    
+            # else:
+            #     print(f"Sayfada resim bulunamadı, anonimleştirme sadece metinle devam ediyor.")
+
         # Anonimleştirilmiş PDF'yi kaydet
         doc.save(cikti_dosya)
         doc.close()
-        print(f"Anonimleştirilmiş PDF {cikti_dosya} olarak kaydedildi.")
-        return konu
+        print(f"Anonymized PDF saved as {cikti_dosya}.")
     except Exception as e:
-        print(f"PDF yazar anonimleştirme sırasında hata oluştu: {e}") 
+        print(f"Error occurred during PDF anonymization: {e}")
+
 
 
 def konu_modelleme(metin):
