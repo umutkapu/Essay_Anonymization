@@ -237,7 +237,7 @@ export default function EssayInquery(props) {
                         <Grid container spacing={2} sx={{ p: 3 }}>
                             <Grid item xs={12}>
                                 <h2>Makale Yönlendirme</h2>
-                                <TableContainer component={Paper}>
+                                <TableContainer component={Paper} sx={{ mb: 5 }}>
                                     <Table>
                                         <TableHead>
                                             <TableRow>
@@ -279,9 +279,71 @@ export default function EssayInquery(props) {
                                         </TableBody>
                                     </Table>
                                 </TableContainer>
+
+                                <h2>📥 Değerlendirilmiş Makaleler</h2>
+                                <TableContainer component={Paper} sx={{ mb: 4 }}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell><b>ID</b></TableCell>
+                                                <TableCell><b>Başlık</b></TableCell>
+                                                <TableCell><b>Yazar</b></TableCell>
+                                                <TableCell><b>PDF</b></TableCell>
+                                                <TableCell><b>Gönder</b></TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {essays.filter(e => e.status === "Değerlendirildi").map((essay) => (
+                                                <TableRow key={essay.id}>
+                                                    <TableCell>{essay.id}</TableCell>
+                                                    <TableCell>{essay.title}</TableCell>
+                                                    <TableCell>{essay.author}</TableCell>
+                                                    <TableCell>
+                                                        <a
+                                                            href={`http://localhost:8000/media/${essay.degerlendirilmis_pdf}`}
+                                                            download
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                        >
+                                                            <Button variant="outlined" color="secondary">
+                                                                İndir
+                                                            </Button>
+                                                        </a>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="primary"
+                                                            onClick={() => {
+                                                                fetch("http://localhost:8000/send-reviewed-to-author/", {
+                                                                    method: "POST",
+                                                                    headers: {
+                                                                        "Content-Type": "application/json",
+                                                                    },
+                                                                    body: JSON.stringify({ article_id: essay.id }),
+                                                                })
+                                                                    .then(res => res.json())
+                                                                    .then(data => {
+                                                                        if (data.success) {
+                                                                            alert("Makale yazara gönderildi.");
+                                                                        } else {
+                                                                            alert("Hata: " + data.message);
+                                                                        }
+                                                                    });
+                                                            }}
+                                                        >
+                                                            Gönder
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
                             </Grid>
                         </Grid>
                     )}
+
 
 
                     {router.pathname.endsWith('/anonymization') && (
