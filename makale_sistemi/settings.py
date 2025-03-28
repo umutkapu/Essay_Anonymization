@@ -67,6 +67,16 @@ CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'makale_sistemi.urls'
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'umutkapukran@gmail.com'  # Gmail adresi
+EMAIL_HOST_PASSWORD = 'erdb kytb cedw fmsf'  # Yukarıdaki 16 haneli şifre
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

@@ -31,8 +31,7 @@ class Article(models.Model):
     hakem = models.ForeignKey("Reviewer", on_delete=models.SET_NULL, null=True, blank=True)
     tracking_number = models.CharField(max_length=100, unique=True)
     anon_pdf = models.FileField(upload_to='uploads/', null=True, blank=True)  # 🟢 Burada tutulacak
-
-
+    degerlendirilmis_pdf = models.FileField(upload_to='uploads/', null=True, blank=True)
 
 
     def __str__(self): 

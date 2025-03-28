@@ -19,4 +19,5 @@ urlpatterns = [
     path("get-reviewer-list/", views.get_reviewer_list, name="get-reviewer-list"),
     path("get-assigned-essays/", views.get_assigned_essays, name="get-assigned-essays"),
     path('get-review-for-article/<int:article_id>/', views.get_review_for_article, name='get_review_for_article'),
+    path('send-reviewed-to-author/', views.send_reviewed_to_author, name='send_reviewed_to_author'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
