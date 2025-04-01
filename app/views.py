@@ -361,6 +361,7 @@ def get_articles(request):
             "author": article.author_email,
             "date": article.upload_date.strftime("%Y-%m-%d %H:%M"),
             "degerlendirilmis_pdf": article.degerlendirilmis_pdf.name if article.degerlendirilmis_pdf else None,
+            "anon_pdf": article.anon_pdf.url if article.anon_pdf else None,
             "status": article.status           
         }
         for article in articles
