@@ -134,6 +134,45 @@ export default function EssayInquery(props) {
             });
     };
 
+    const handleRandomAssign = (essayId) => {
+        fetch("http://localhost:8000/get-reviewer-list/")
+            .then((res) => res.json())
+            .then((reviewers) => {
+                if (reviewers.length === 0) {
+                    alert("Sistemde hiç hakem bulunamadı.");
+                    return;
+                }
+
+                const randomReviewer = reviewers[Math.floor(Math.random() * reviewers.length)];
+
+                fetch("http://localhost:8000/assign-reviewer/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        article_id: essayId,
+                        reviewer_name: randomReviewer.name,
+                    }),
+                })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (data.success) {
+                            alert(`Makale rastgele olarak ${randomReviewer.name} adlı hakeme yönlendirildi.`);
+                            // Listedeki durumu güncelle
+                            setEssays((prev) =>
+                                prev.map((e) =>
+                                    e.id === essayId ? { ...e, status: "Yönlendirildi" } : e
+                                )
+                            );
+                        } else {
+                            alert("Yönlendirme hatası: " + data.error);
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("İstek hatası:", err);
+                        alert("Sunucuya ulaşılamadı.");
+                    });
+            });
+    };
 
 
     return (
@@ -164,7 +203,7 @@ export default function EssayInquery(props) {
                                                 <TableCell><b>Yazar</b></TableCell>
                                                 <TableCell><b>Tarih</b></TableCell>
                                                 <TableCell><b>Durumu</b></TableCell>
-                                                <TableCell><b>İşlem</b></TableCell>
+                                                <TableCell><b>Hakem Değerlendirmesi</b></TableCell>
                                                 <TableCell><b>İndir</b></TableCell>
                                             </TableRow>
                                         </TableHead>
@@ -216,10 +255,33 @@ export default function EssayInquery(props) {
                                                                 variant="contained"
                                                                 color='dark'
                                                                 startIcon={<DownloadIcon />}
-                                                                onClick={() =>
-                                                                    window.open(`http://localhost:8000/media/uploads/${essay.title}`, '_blank')
-                                                                }
+                                                                onClick={() => {
+                                                                    let downloadUrl = "";
+
+                                                                    if (essay.status === "Değerlendirildi" || essay.status === "Yayında") {
+                                                                        downloadUrl = `http://localhost:8000/media/${essay.degerlendirilmis_pdf}`;
+                                                                    } else if (essay.status === "Anonimleştirilmiş" || essay.status === "Yönlendirildi") {
+                                                                        downloadUrl = `http://localhost:8000${essay.anon_pdf}`;
+                                                                    } else {
+                                                                        downloadUrl = `http://localhost:8000/media/uploads/${essay.title}`;
+                                                                    }
+
+                                                                    if (downloadUrl) {
+                                                                        const a = document.createElement("a");
+                                                                        a.href = downloadUrl;
+                                                                        a.target = "_blank";
+                                                                        a.rel = "noopener noreferrer";
+                                                                        a.download = ""; // İstersen bu satırı kaldırabilirsin (indirmek yerine açar)
+                                                                        document.body.appendChild(a);
+                                                                        a.click();
+                                                                        document.body.removeChild(a);
+                                                                    } else {
+                                                                        alert("İndirilecek dosya bulunamadı.");
+                                                                    }
+                                                                }}
+
                                                             />
+
                                                         </TableCell>
                                                     </TableRow>
                                                 ))
@@ -270,10 +332,23 @@ export default function EssayInquery(props) {
                                                         </Select>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Button variant="contained" color="primary" onClick={() => handleAssign(essay)}>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="primary"
+                                                            onClick={() => handleAssign(essay)}
+                                                            sx={{ mr: 1 }}
+                                                        >
                                                             Gönder
                                                         </Button>
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="warning"
+                                                            onClick={() => handleRandomAssign(essay.id)}
+                                                        >
+                                                            Rastgele Ata
+                                                        </Button>
                                                     </TableCell>
+
                                                 </TableRow>
                                             ))}
                                         </TableBody>
