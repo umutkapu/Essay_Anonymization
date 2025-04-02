@@ -26,11 +26,26 @@ def uploadArticle(request):
                     break
 
             article.save()
-            return redirect("/editor")
-        else:
-            print(form.errors)
 
-    return render(request, "index.html")
+            # 🟢 JSON yanıtı olarak gönder
+            return JsonResponse({
+                "success": True,
+                "message": "Makale başarıyla yüklendi.",
+                "tracking_number": article.tracking_number
+            })
+
+        else:
+            # ❌ Form hatası varsa detaylı gönder
+            return JsonResponse({
+                "success": False,
+                "message": "Form geçersiz.",
+                "errors": form.errors
+            }, status=400)
+
+    return JsonResponse({
+        "success": False,
+        "message": "Yalnızca POST isteği desteklenmektedir."
+    }, status=405)
 
 
 def editor(request):
