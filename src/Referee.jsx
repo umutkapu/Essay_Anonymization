@@ -93,7 +93,7 @@ export default function RefereePanel(props) {
                 if (data.success) {
                     alert("Değerlendirme başarıyla kaydedildi.");
 
-                    // 🔄 Listeyi yeniden al
+                    //  Listeyi yeniden al
                     fetch('http://localhost:8000/get-assigned-essays/')
                         .then(res => res.json())
                         .then(data => setAssignedEssays(data))

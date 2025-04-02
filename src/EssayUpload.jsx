@@ -112,7 +112,7 @@ export default function EssayUpload(props) {
                 body: formData,
             });
 
-            const result = await response.json();  // 🔁 JSON yanıtını al
+            const result = await response.json();  // JSON yanıtını al
 
             if (response.ok && result.success) {
                 alert(`📄 Makale başarıyla yüklendi!\n📌 Takip Numaranız: ${result.tracking_number}`);
@@ -239,8 +239,8 @@ export default function EssayUpload(props) {
                                     label="Mesaj"
                                     multiline
                                     rows={4}
-                                    value={message}  // 🔁 eksikti
-                                    onChange={(e) => setMessage(e.target.value)}  // 🔁 eksikti
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
                                     placeholder="Mesajınızı buraya yazın..."
                                     InputLabelProps={{ shrink: true }}
                                 />

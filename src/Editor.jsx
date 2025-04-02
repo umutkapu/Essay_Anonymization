@@ -54,7 +54,7 @@ export default function EssayInquery(props) {
     const [selectedReviewers, setSelectedReviewers] = React.useState({});
 
 
-    const [reviewersByEssay, setReviewersByEssay] = React.useState({}); // 📌 Her makale için hakem listesi
+    const [reviewersByEssay, setReviewersByEssay] = React.useState({}); //  Her makale için hakem listesi
 
     // Makaleleri çek
     React.useEffect(() => {
@@ -271,7 +271,7 @@ export default function EssayInquery(props) {
                                                                         a.href = downloadUrl;
                                                                         a.target = "_blank";
                                                                         a.rel = "noopener noreferrer";
-                                                                        a.download = ""; // İstersen bu satırı kaldırabilirsin (indirmek yerine açar)
+                                                                        a.download = "";
                                                                         document.body.appendChild(a);
                                                                         a.click();
                                                                         document.body.removeChild(a);
