@@ -100,33 +100,33 @@ export default function EssayUpload(props) {
         formData.append('author_email', email);
         formData.append('file', selectedFile);
 
-        const csrfToken = getCookie('csrftoken'); // backend csrf kontrolü varsa
+        const csrfToken = getCookie('csrftoken');
 
         try {
             const response = await fetch('http://localhost:8000/makale_sistemi/', {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': csrfToken, // backend'de csrf kontrolü varsa
+                    'X-CSRFToken': csrfToken,
                 },
-                credentials: 'include', // cookie'yi gönder
+                credentials: 'include',
                 body: formData,
             });
 
-            const text = await response.text();
-            console.log('Sunucudan gelen cevap:', text);
+            const result = await response.json();  // 🔁 JSON yanıtını al
 
-            if (response.ok) {
-                alert('Makale başarıyla yüklendi!');
+            if (response.ok && result.success) {
+                alert(`📄 Makale başarıyla yüklendi!\n📌 Takip Numaranız: ${result.tracking_number}`);
                 setEmail('');
                 setSelectedFile(null);
             } else {
-                alert('Yükleme başarısız. Lütfen tekrar deneyin.');
+                alert('❌ Yükleme başarısız. ' + (result.message || 'Lütfen tekrar deneyin.'));
             }
         } catch (error) {
             console.error('Yükleme hatası:', error);
             alert('Sunucuya bağlanılamadı.');
         }
     };
+
 
     const handleSendMessage = async () => {
         if (!email || emailError) {
